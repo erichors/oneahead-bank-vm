@@ -1,0 +1,25 @@
+.DS_Store
+
+# Java
+target/
+*.jar.original
+
+# Runtime database and logs
+backend/data/
+*.log
+nohup.out
+
+# React
+frontend/node_modules/
+frontend/build/
+
+# Local environment
+.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# IDE
+.idea/
+.vscode/
