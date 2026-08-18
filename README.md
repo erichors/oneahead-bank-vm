@@ -2,6 +2,8 @@
 
 A 3-tier VM version of OneAhead Bank with the React frontend preserved and the backend services running as Java Spring Boot apps.
 
+For reusable AI/handoff context, see [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md). It explains the architecture, runtime behavior, problem-pattern model, and a reusable prompt for working on this app elsewhere.
+
 ## Tiers and VM Sizes
 
 | VM | Tier | Default port | Demo size | Safer demo size | Storage |
