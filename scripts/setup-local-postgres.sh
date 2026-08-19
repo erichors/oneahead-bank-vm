@@ -53,8 +53,8 @@ start_postgres() {
 
 configure_password_auth() {
   local hba_file
-  hba_file="$(sudo -u postgres psql -Atc 'show hba_file;' 2>/dev/null || true)"
-  if [ -z "${hba_file}" ] || [ ! -f "${hba_file}" ]; then
+  hba_file="$(sudo -u postgres bash -lc "cd /tmp && psql -Atc 'show hba_file;'" 2>/dev/null || true)"
+  if [ -z "${hba_file}" ] || ! sudo test -f "${hba_file}"; then
     echo "Could not find pg_hba.conf. Skipping auth file update." >&2
     return
   fi
@@ -87,7 +87,7 @@ configure_password_auth() {
 }
 
 configure_database() {
-  sudo -u postgres psql \
+  sudo -u postgres bash -lc "cd /tmp && psql" -- \
     -v db_name="${DB_NAME}" \
     -v db_user="${DB_USER}" \
     -v db_password="${DB_PASSWORD}" <<'SQL'
