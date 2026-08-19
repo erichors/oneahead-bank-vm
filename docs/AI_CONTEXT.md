@@ -54,7 +54,8 @@ The database is colocated with the backend tier by default, so this remains a 3-
     |-- drive-traffic.sh
     |-- run-backend.sh
     |-- run-credit-service.sh
-    `-- run-frontend.sh
+    |-- run-frontend.sh
+    `-- setup-local-postgres.sh
 ```
 
 ## Runtime Services
@@ -114,9 +115,11 @@ REACT_APP_API_URL=http://BACKEND_VM_HOST:8082
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
 SPRING_DATASOURCE_USERNAME=oneahead
 SPRING_DATASOURCE_PASSWORD=oneahead
+DT_TAGS="app_name=ABNK tier=backend"
 ```
 
 For managed PostgreSQL, override `SPRING_DATASOURCE_URL` with an RDS or other managed endpoint. The code does not change.
+All tier startup scripts set `DT_TAGS` by default with `app_name=ABNK` and a tier-specific value (`tier=frontend`, `tier=backend`, or `tier=credit`) for Dynatrace process-level tagging.
 
 The repo scripts also accept host-level variables:
 

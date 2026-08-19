@@ -103,32 +103,13 @@ sudo dnf install -y java-17-amazon-corretto-devel maven nodejs npm nginx git cur
 
 ### Local PostgreSQL Setup
 
-On the backend VM, initialize and start PostgreSQL.
-
-Amazon Linux 2023:
+On the backend VM, run the setup script. It installs PostgreSQL when needed, initializes the database service, starts it, and creates or updates the demo database/user.
 
 ```bash
-sudo postgresql-setup --initdb
-sudo systemctl enable --now postgresql
+./scripts/setup-local-postgres.sh
 ```
 
-Ubuntu:
-
-```bash
-sudo systemctl enable --now postgresql
-```
-
-Create the demo database and user:
-
-```bash
-sudo -u postgres psql <<'SQL'
-CREATE USER oneahead WITH PASSWORD 'oneahead';
-CREATE DATABASE oneahead OWNER oneahead;
-GRANT ALL PRIVILEGES ON DATABASE oneahead TO oneahead;
-SQL
-```
-
-The backend defaults to this local database:
+The backend defaults to this local database configuration:
 
 ```bash
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
@@ -137,9 +118,11 @@ SPRING_DATASOURCE_PASSWORD=oneahead
 SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
 ```
 
-You can also source `scripts/postgres-local.env.example` before starting the backend.
+You can also source `scripts/postgres-local.env.example` before starting the backend if you want the values explicit in your shell.
 
 For managed PostgreSQL, copy `scripts/postgres-managed.env.example`, replace `YOUR_RDS_ENDPOINT` and the password, then source it on the backend VM before starting the backend. For RDS, allow inbound TCP `5432` from the backend EC2 security group only.
+
+All tier startup scripts set Dynatrace process tags with `DT_TAGS`, including `app_name=ABNK` and a tier tag.
 
 ### Build The Java Services
 
@@ -231,6 +214,7 @@ Wants=network-online.target
 [Service]
 WorkingDirectory=/home/ec2-user/oneahead-bank-vm
 Environment=PORT=8084
+Environment="DT_TAGS=app_name=ABNK tier=credit"
 ExecStart=/usr/bin/java -jar credit-service/target/banking-credit-service-1.0.0.jar
 Restart=always
 RestartSec=5
@@ -251,6 +235,7 @@ Wants=network-online.target
 WorkingDirectory=/home/ec2-user/oneahead-bank-vm
 Environment=PORT=8082
 Environment=CREDIT_SERVICE_URL=http://CREDIT_VM_HOST:8084/api/credit/check
+Environment="DT_TAGS=app_name=ABNK tier=backend"
 Environment=SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
 Environment=SPRING_DATASOURCE_USERNAME=oneahead
 Environment=SPRING_DATASOURCE_PASSWORD=oneahead
