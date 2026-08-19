@@ -10,7 +10,7 @@ In this repo, "AI context" means documentation for using an AI coding assistant 
 
 ## Product Summary
 
-OneAhead Bank is a small multi-tier banking demo intended for VM and EC2 observability scenarios. It has a polished React banking UI, a Java backend with an embedded database, and a separate Java credit scoring service.
+OneAhead Bank is a small multi-tier banking demo intended for VM and EC2 observability scenarios. It has a polished React banking UI, a Java backend with PostgreSQL, and a separate Java credit scoring service.
 
 The app is intentionally simple enough to deploy on three VMs while still producing useful service-to-service traffic and controllable problem patterns.
 
@@ -20,7 +20,7 @@ The app is intentionally simple enough to deploy on three VMs while still produc
 Browser
   -> Frontend VM: React app on port 8081
   -> Backend VM: Java Spring Boot API on port 8082
-       -> H2 file database under backend/data/
+       -> local PostgreSQL on the backend VM by default
        -> Credit VM: Java Spring Boot credit service on port 8084
 ```
 
@@ -30,7 +30,7 @@ The intended deployment uses three VMs:
 - Backend VM: runs the banking API and owns the database.
 - Credit VM: runs the credit scoring API.
 
-The database is intentionally colocated with the backend tier, so this remains a 3-tier VM architecture. If the database is moved to its own VM later, the app becomes a 4-tier architecture.
+The database is colocated with the backend tier by default, so this remains a 3-tier VM architecture. If the datasource is pointed at managed PostgreSQL such as Amazon RDS, the app becomes a cleaner managed-database topology for observability demos.
 
 ## Repository Layout
 
@@ -72,7 +72,7 @@ cd frontend
 REACT_APP_API_URL=http://BACKEND_VM_HOST:8082 npm run build
 ```
 
-The frontend contains normal banking screens and an Admin page. The Admin page can generate browser-side load and toggle backend problem patterns.
+The frontend contains normal banking screens and a controls page behind the settings gear. The controls page can generate browser-side load and toggle backend problem patterns.
 The visible navigation uses a settings gear for the operational controls instead of an "Admin" navigation label.
 
 ### Backend
@@ -80,8 +80,8 @@ The visible navigation uses a settings gear for the operational controls instead
 - Path: `backend/`
 - Framework: Java 17, Spring Boot 3.2
 - Port: `8082`
-- Database: H2 file database
-- Database location: `backend/data/`
+- Database: PostgreSQL
+- Default database URL: `jdbc:postgresql://localhost:5432/oneahead`
 - Important env var: `CREDIT_SERVICE_URL`
 
 Primary API groups:
@@ -111,7 +111,12 @@ VM service discovery is environment-variable based:
 ```bash
 CREDIT_SERVICE_URL=http://CREDIT_VM_HOST:8084/api/credit/check
 REACT_APP_API_URL=http://BACKEND_VM_HOST:8082
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
+SPRING_DATASOURCE_USERNAME=oneahead
+SPRING_DATASOURCE_PASSWORD=oneahead
 ```
+
+For managed PostgreSQL, override `SPRING_DATASOURCE_URL` with an RDS or other managed endpoint. The code does not change.
 
 The repo scripts also accept host-level variables:
 
@@ -161,7 +166,7 @@ Preferred pattern:
 1. Add new config keys in `backend/src/main/java/com/banking/service/AdminService.java`.
 2. Add a small method that reads the config and applies the problem behavior.
 3. Call that method from the narrowest relevant controller or service path.
-4. Add a card/toggle in the React Admin page.
+4. Add a card/toggle in the React controls page behind the settings gear.
 5. Document the new keys in this file and in `README.md` if users need to operate them.
 
 Good future examples:
@@ -228,7 +233,7 @@ The UI should feel like a modern consumer fintech dashboard:
 - Visual tone: clean, confident, polished
 - Current palette: dark navy, saturated blue, cyan accent, muted financial neutrals
 - Layout: practical app-first screens, not a marketing landing page
-- Admin page: operational control room for load and problem patterns
+- Controls page: operational control room for load and problem patterns
 
 Keep screens dense enough for repeated demo use. Avoid decorative-only sections that make the app harder to operate.
 
@@ -240,8 +245,8 @@ Use these rules when asking an AI assistant to work on this repo:
 - Keep React for the frontend.
 - Keep backend and credit service Java/Spring Boot.
 - Prefer environment variables for VM hostnames and ports.
-- Do not commit `node_modules`, `frontend/build`, Java `target` directories, or `backend/data`.
-- Keep problem patterns controllable from the Admin page.
+- Do not commit `node_modules`, `frontend/build`, Java `target` directories, or local database files.
+- Keep problem patterns controllable from the settings gear controls page.
 - Keep problem patterns off by default.
 - Run `mvn clean package` and `npm run build` before pushing changes when dependencies are available.
 
@@ -254,16 +259,16 @@ You are working on OneAhead Bank VM Edition, a public 3-tier VM banking demo.
 
 Architecture:
 - Frontend VM: React app on port 8081.
-- Backend VM: Java Spring Boot API on port 8082 with embedded H2 database under backend/data/.
+- Backend VM: Java Spring Boot API on port 8082 with local PostgreSQL by default.
 - Credit VM: Java Spring Boot credit service on port 8084.
 
 Service discovery is environment-variable based:
 - Frontend uses REACT_APP_API_URL to call the backend.
 - Backend uses CREDIT_SERVICE_URL to call the credit service.
 
-The app has an Admin page for load generation and problem toggles. Existing problem keys include 404 errors, slow SQL, slow credit, and backend CPU burn.
+The app has a controls page behind the settings gear for load generation and problem toggles. Existing problem keys include 404 errors, slow SQL, slow credit, and backend CPU burn.
 
-Preserve the 3-tier VM shape, keep React, keep Java/Spring Boot for backend services, keep problem patterns off by default, and update README.md plus docs/AI_CONTEXT.md when adding operational behavior.
+Preserve the 3-tier VM shape for local PostgreSQL deployments, keep React, keep Java/Spring Boot for backend services, keep problem patterns off by default, and update README.md plus docs/AI_CONTEXT.md when adding operational behavior.
 
 Before finishing, run:
 - mvn clean package

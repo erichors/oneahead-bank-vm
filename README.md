@@ -9,20 +9,20 @@ For reusable AI/handoff context, see [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md). I
 | VM | Tier | Default port | Demo size | Safer demo size | Storage |
 | --- | --- | ---: | --- | --- | --- |
 | Frontend VM | React frontend | 8081 | 1 vCPU / 1 GB RAM | 1 vCPU / 2 GB RAM | 10 GB minimum, 20 GB comfortable |
-| Backend VM | Java backend + H2 database | 8082 | 2 vCPU / 4 GB RAM | 2-4 vCPU / 8 GB RAM | 20 GB minimum, 40 GB comfortable |
+| Backend VM | Java backend + PostgreSQL database | 8082 | 2 vCPU / 4 GB RAM | 2-4 vCPU / 8 GB RAM | 20 GB minimum, 40 GB comfortable |
 | Credit VM | Java credit service | 8084 | 1 vCPU / 1-2 GB RAM | 2 vCPU / 2 GB RAM | 10 GB minimum, 20 GB comfortable |
 
 Storage notes:
 
 - The frontend VM mainly stores Node/npm dependencies, the React build, logs, and OS packages. Use 20 GB if you will build the frontend on the VM.
-- The backend VM needs the most storage because it owns the H2 database under `backend/data/`, application logs, and Java build artifacts. Use 40 GB if you plan to leave traffic running for long demos.
+- The backend VM needs the most storage because it owns the local PostgreSQL data directory, application logs, and Java build artifacts. Use 40 GB if you plan to leave traffic running for long demos.
 - The credit VM is stateless in this version, so 10 GB is enough for the app and OS. Use 20 GB for easier patching, logs, and troubleshooting.
 - For short local demos, all three VMs can use the minimum values. For observability demos with retained logs and load generation, use the comfortable values.
 
 Request path:
 
 ```text
-Browser -> frontend VM -> backend VM + database -> credit service VM
+Browser -> frontend VM -> backend VM + PostgreSQL -> credit service VM
 ```
 
 ## Build
@@ -76,28 +76,70 @@ Demo users are seeded on backend startup:
 This app is designed for three VMs:
 
 - Frontend VM: builds and serves the React app.
-- Backend VM: runs the Java backend and owns the H2 database under `backend/data/`.
+- Backend VM: runs the Java backend and owns the local PostgreSQL database.
 - Credit VM: runs the Java credit service.
+
+The default database is local PostgreSQL on the backend VM. To switch to managed PostgreSQL such as Amazon RDS, keep the same app code and override the backend datasource environment variables.
 
 The simplest deployment model is to clone this repo on all three VMs, build on the VM, and run only the tier assigned to that VM. For a cleaner production-style demo, build artifacts once and copy only the needed files to each VM.
 
 ### VM Prerequisites
 
-Install Java 17 and Maven on the backend and credit VMs. Install Node.js, npm, and nginx on the frontend VM.
+Install Java 17 and Maven on the backend and credit VMs. Install PostgreSQL on the backend VM. Install Node.js, npm, and nginx on the frontend VM.
 
 Ubuntu example:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y openjdk-17-jdk maven nodejs npm nginx git curl
+sudo apt-get install -y openjdk-17-jdk maven nodejs npm nginx git curl postgresql postgresql-contrib
 ```
 
 Amazon Linux 2023 example:
 
 ```bash
 sudo dnf update -y
-sudo dnf install -y java-17-amazon-corretto-devel maven nodejs npm nginx git curl
+sudo dnf install -y java-17-amazon-corretto-devel maven nodejs npm nginx git curl postgresql15 postgresql15-server
 ```
+
+### Local PostgreSQL Setup
+
+On the backend VM, initialize and start PostgreSQL.
+
+Amazon Linux 2023:
+
+```bash
+sudo postgresql-setup --initdb
+sudo systemctl enable --now postgresql
+```
+
+Ubuntu:
+
+```bash
+sudo systemctl enable --now postgresql
+```
+
+Create the demo database and user:
+
+```bash
+sudo -u postgres psql <<'SQL'
+CREATE USER oneahead WITH PASSWORD 'oneahead';
+CREATE DATABASE oneahead OWNER oneahead;
+GRANT ALL PRIVILEGES ON DATABASE oneahead TO oneahead;
+SQL
+```
+
+The backend defaults to this local database:
+
+```bash
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
+SPRING_DATASOURCE_USERNAME=oneahead
+SPRING_DATASOURCE_PASSWORD=oneahead
+SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
+```
+
+You can also source `scripts/postgres-local.env.example` before starting the backend.
+
+For managed PostgreSQL, copy `scripts/postgres-managed.env.example`, replace `YOUR_RDS_ENDPOINT` and the password, then source it on the backend VM before starting the backend. For RDS, allow inbound TCP `5432` from the backend EC2 security group only.
 
 ### Build The Java Services
 
@@ -209,6 +251,10 @@ Wants=network-online.target
 WorkingDirectory=/home/ec2-user/oneahead-bank-vm
 Environment=PORT=8082
 Environment=CREDIT_SERVICE_URL=http://CREDIT_VM_HOST:8084/api/credit/check
+Environment=SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
+Environment=SPRING_DATASOURCE_USERNAME=oneahead
+Environment=SPRING_DATASOURCE_PASSWORD=oneahead
+Environment=SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
 ExecStart=/usr/bin/java -jar backend/target/banking-backend-1.0.0.jar
 Restart=always
 RestartSec=5
