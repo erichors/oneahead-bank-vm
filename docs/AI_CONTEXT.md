@@ -18,7 +18,7 @@ The app is intentionally simple enough to deploy on three VMs while still produc
 
 ```text
 Browser
-  -> Frontend VM: React app on port 8081
+  -> Frontend VM: Node/Express server on port 8081 serving the React build
   -> Backend VM: Java Spring Boot API on port 8082
        -> local PostgreSQL on the backend VM by default
        -> Credit VM: Java Spring Boot credit service on port 8084
@@ -26,7 +26,7 @@ Browser
 
 The intended deployment uses three VMs:
 
-- Frontend VM: serves the React UI and admin console.
+- Frontend VM: serves the React UI and proxies `/api/*` to the backend.
 - Backend VM: runs the banking API and owns the database.
 - Credit VM: runs the credit scoring API.
 
@@ -63,18 +63,21 @@ The database is colocated with the backend tier by default, so this remains a 3-
 ### Frontend
 
 - Path: `frontend/`
-- Framework: React 18 with Create React App
+- Framework: Node/Express server with React 18 Create React App build
 - Local/dev port: `8081`
-- Important env var: `REACT_APP_API_URL`
-- Production build command:
+- Important env vars: `BACKEND_HOST`, `BACKEND_PORT`, or `BACKEND_URL`
+- Production build and run command:
 
 ```bash
 cd frontend
-REACT_APP_API_URL=http://BACKEND_VM_HOST:8082 npm run build
+npm install
+npm run build
+BACKEND_HOST=BACKEND_VM_HOST npm run serve
 ```
 
 The frontend contains normal banking screens and a controls page behind the settings gear. The controls page can generate browser-side load and toggle backend problem patterns.
 The visible navigation uses a settings gear for the operational controls instead of an "Admin" navigation label.
+The browser calls same-origin `/api/*`; the Express frontend server proxies those requests to the backend so Dynatrace can see a server-side frontend-to-backend edge.
 
 ### Backend
 
@@ -111,7 +114,7 @@ VM service discovery is environment-variable based:
 
 ```bash
 CREDIT_SERVICE_URL=http://CREDIT_VM_HOST:8084/api/credit/check
-REACT_APP_API_URL=http://BACKEND_VM_HOST:8082
+BACKEND_URL=http://BACKEND_VM_HOST:8082
 SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/oneahead
 SPRING_DATASOURCE_USERNAME=oneahead
 SPRING_DATASOURCE_PASSWORD=oneahead
@@ -261,12 +264,12 @@ Use this prompt to start work in another AI coding environment:
 You are working on OneAhead Bank VM Edition, a public 3-tier VM banking demo.
 
 Architecture:
-- Frontend VM: React app on port 8081.
+- Frontend VM: Node/Express server on port 8081 serving the React build.
 - Backend VM: Java Spring Boot API on port 8082 with local PostgreSQL by default.
 - Credit VM: Java Spring Boot credit service on port 8084.
 
 Service discovery is environment-variable based:
-- Frontend uses REACT_APP_API_URL to call the backend.
+- Frontend server uses BACKEND_URL or BACKEND_HOST/BACKEND_PORT to proxy `/api/*` to the backend.
 - Backend uses CREDIT_SERVICE_URL to call the credit service.
 
 The app has a controls page behind the settings gear for load generation and problem toggles. Existing problem keys include 404 errors, slow SQL, slow credit, and backend CPU burn.

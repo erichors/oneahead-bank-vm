@@ -3,8 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate 
 import axios from 'axios';
 import './App.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '';
-const api = axios.create({ baseURL: API_BASE_URL });
+const api = axios.create({ baseURL: '' });
 
 const fallbackUsers = [
   { username: 'tbrady', password: 'goat', firstName: 'Thomas', lastName: 'Brady', name: 'Thomas Brady', address: '82 Biscayne Terrace', city: 'Miami', state: 'Florida', lastFour: '9832' },

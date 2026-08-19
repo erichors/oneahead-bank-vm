@@ -8,7 +8,7 @@ For reusable AI/handoff context, see [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md). I
 
 | VM | Tier | Default port | Demo size | Safer demo size | Storage |
 | --- | --- | ---: | --- | --- | --- |
-| Frontend VM | React frontend | 8081 | 1 vCPU / 1 GB RAM | 1 vCPU / 2 GB RAM | 10 GB minimum, 20 GB comfortable |
+| Frontend VM | Node/Express frontend + React build | 8081 | 1 vCPU / 1 GB RAM | 1 vCPU / 2 GB RAM | 10 GB minimum, 20 GB comfortable |
 | Backend VM | Java backend + PostgreSQL database | 8082 | 2 vCPU / 4 GB RAM | 2-4 vCPU / 8 GB RAM | 20 GB minimum, 40 GB comfortable |
 | Credit VM | Java credit service | 8084 | 1 vCPU / 1-2 GB RAM | 2 vCPU / 2 GB RAM | 10 GB minimum, 20 GB comfortable |
 
@@ -22,7 +22,7 @@ Storage notes:
 Request path:
 
 ```text
-Browser -> frontend VM -> backend VM + PostgreSQL -> credit service VM
+Browser -> frontend Node/Express VM -> backend VM + PostgreSQL -> credit service VM
 ```
 
 ## Build
@@ -75,7 +75,7 @@ Demo users are seeded on backend startup:
 
 This app is designed for three VMs:
 
-- Frontend VM: builds and serves the React app.
+- Frontend VM: serves the React app through Node/Express and proxies `/api/*` to the backend.
 - Backend VM: runs the Java backend and owns the local PostgreSQL database.
 - Credit VM: runs the Java credit service.
 
@@ -85,20 +85,20 @@ The simplest deployment model is to clone this repo on all three VMs, build on t
 
 ### VM Prerequisites
 
-Install Java 17 and Maven on the backend and credit VMs. Install PostgreSQL on the backend VM. Install Node.js, npm, and nginx on the frontend VM.
+Install Java 17 and Maven on the backend and credit VMs. Install PostgreSQL on the backend VM. Install Node.js and npm on the frontend VM.
 
 Ubuntu example:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y openjdk-17-jdk maven nodejs npm nginx git curl postgresql postgresql-contrib
+sudo apt-get install -y openjdk-17-jdk maven nodejs npm git curl postgresql postgresql-contrib
 ```
 
 Amazon Linux 2023 example:
 
 ```bash
 sudo dnf update -y
-sudo dnf install -y java-17-amazon-corretto-devel maven nodejs npm nginx git curl postgresql15 postgresql15-server
+sudo dnf install -y java-17-amazon-corretto-devel maven nodejs npm git curl postgresql15 postgresql15-server
 ```
 
 ### Local PostgreSQL Setup
@@ -148,23 +148,28 @@ CREDIT_SERVICE_URL=http://CREDIT_VM_HOST:8084/api/credit/check \
 java -jar backend/target/banking-backend-1.0.0.jar
 ```
 
-Frontend VM development server:
+Frontend VM:
 
 ```bash
 cd frontend
-PORT=8081 REACT_APP_API_URL=http://BACKEND_VM_HOST:8082 npm start
+npm install
+npm run build
+PORT=8081 BACKEND_HOST=BACKEND_VM_HOST npm run serve
 ```
 
-For a production static frontend, build with the backend URL baked in:
+The browser calls same-origin `/api/*`; the Node/Express frontend server proxies those requests to the backend. This creates an instrumentable frontend-to-backend service edge for Dynatrace Smartscape.
+
+For a production-style frontend using the repo script:
 
 ```bash
 cd frontend
-REACT_APP_API_URL=http://BACKEND_VM_HOST:8082 npm run build
+npm install
+npm run build
+cd ..
+BACKEND_HOST=BACKEND_VM_HOST ./scripts/run-frontend.sh
 ```
 
-Then serve `frontend/build` with nginx, Apache, or any static file server.
-
-### Production-Style Frontend With nginx
+### Production-Style Frontend With Node/Express
 
 On the frontend VM:
 
@@ -172,33 +177,9 @@ On the frontend VM:
 git clone https://github.com/YOUR_GITHUB_USER/oneahead-bank-vm.git
 cd oneahead-bank-vm/frontend
 npm install
-REACT_APP_API_URL=http://BACKEND_VM_HOST:8082 npm run build
-sudo mkdir -p /var/www/oneahead-bank
-sudo cp -R build/* /var/www/oneahead-bank/
-```
-
-Create `/etc/nginx/conf.d/oneahead-bank.conf`:
-
-```nginx
-server {
-    listen 8081;
-    server_name _;
-
-    root /var/www/oneahead-bank;
-    index index.html;
-
-    location / {
-        try_files $uri /index.html;
-    }
-}
-```
-
-Restart nginx:
-
-```bash
-sudo nginx -t
-sudo systemctl enable --now nginx
-sudo systemctl restart nginx
+npm run build
+cd ..
+BACKEND_HOST=BACKEND_VM_HOST ./scripts/run-frontend.sh
 ```
 
 ### systemd Services
@@ -319,12 +300,12 @@ java -jar backend/target/banking-backend-1.0.0.jar
 ```bash
 cd frontend
 npm install
-REACT_APP_API_URL=http://BACKEND_PRIVATE_IP:8082 npm run build
-sudo mkdir -p /var/www/oneahead-bank
-sudo cp -R build/* /var/www/oneahead-bank/
+npm run build
+cd ..
+BACKEND_HOST=BACKEND_PRIVATE_IP ./scripts/run-frontend.sh
 ```
 
-8. Configure nginx using the `Production-Style Frontend With nginx` section.
+8. Keep the frontend running with systemd or your process manager.
 9. Open `http://FRONTEND_PUBLIC_IP:8081`.
 
 ### EC2 Smoke Tests
