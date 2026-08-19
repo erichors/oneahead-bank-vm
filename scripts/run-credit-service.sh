@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 cd "$(dirname "$0")/.."
-DEBUG=false PORT="${PORT:-8084}" java -jar credit-service/target/banking-credit-service-1.0.0.jar
+
+export DEBUG="${DEBUG:-false}"
+export PORT="${PORT:-8084}"
+
+echo "Starting credit service on port ${PORT}"
+
+java -jar credit-service/target/banking-credit-service-1.0.0.jar

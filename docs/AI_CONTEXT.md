@@ -73,6 +73,7 @@ REACT_APP_API_URL=http://BACKEND_VM_HOST:8082 npm run build
 ```
 
 The frontend contains normal banking screens and an Admin page. The Admin page can generate browser-side load and toggle backend problem patterns.
+The visible navigation uses a settings gear for the operational controls instead of an "Admin" navigation label.
 
 ### Backend
 
@@ -86,6 +87,7 @@ The frontend contains normal banking screens and an Admin page. The Admin page c
 Primary API groups:
 
 - `/api/account/*`: balance, deposit, transfer
+- `/api/demo/*`: seeded demo users, login, and account summary data
 - `/api/credit/check`: backend proxy into the credit tier
 - `/api/admin/*`: problem-pattern controls and admin config
 - `/actuator/health`: Spring Boot health
@@ -109,6 +111,22 @@ VM service discovery is environment-variable based:
 ```bash
 CREDIT_SERVICE_URL=http://CREDIT_VM_HOST:8084/api/credit/check
 REACT_APP_API_URL=http://BACKEND_VM_HOST:8082
+```
+
+The repo scripts also accept host-level variables:
+
+```bash
+CREDIT_HOST=54.175.159.199 ./scripts/run-backend.sh
+BACKEND_HOST=34.238.42.210 ./scripts/run-frontend.sh
+```
+
+Demo users:
+
+```text
+tbrady / goat   Thomas Brady, Miami, Florida
+dmorgan / ahead1 Dave Morgan, Naperville, Illinois
+mlowe / ahead1  Matt Lowe, Cleveland, Ohio
+dshah / ahead1  Dipen Shah, Edison, New Jersey
 ```
 
 Do not reintroduce Kubernetes service names like `backend-service` or `credit-service` unless creating a separate Kubernetes variant.
@@ -160,7 +178,7 @@ Avoid destructive patterns by default. Do not add patterns that delete data, exh
 
 There are two load-generation options:
 
-1. Browser load slider in the Admin page.
+1. Browser load slider behind the settings gear. It defaults to 3 requests per second, persists in browser local storage, and creates debit/credit transactions across seeded users through `/api/demo/transactions/random`.
 2. Headless shell driver:
 
 ```bash
@@ -208,7 +226,7 @@ The UI should feel like a modern consumer fintech dashboard:
 
 - Brand: OneAhead Bank
 - Visual tone: clean, confident, polished
-- Current palette: dark charcoal, bright green accent, muted financial neutrals
+- Current palette: dark navy, saturated blue, cyan accent, muted financial neutrals
 - Layout: practical app-first screens, not a marketing landing page
 - Admin page: operational control room for load and problem patterns
 

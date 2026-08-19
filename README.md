@@ -48,6 +48,29 @@ Start each service in its own terminal from this repo:
 
 Open http://localhost:8081.
 
+The scripts default to localhost, but each host can be changed with environment variables:
+
+```bash
+CREDIT_HOST=54.175.159.199 ./scripts/run-backend.sh
+BACKEND_HOST=34.238.42.210 ./scripts/run-frontend.sh
+```
+
+For EC2, copy `scripts/ec2.env.example`, edit the IPs, then source it before starting a tier:
+
+```bash
+source scripts/ec2.env.example
+./scripts/run-backend.sh
+```
+
+Demo users are seeded on backend startup:
+
+| User | Location | Username | Password |
+| --- | --- | --- | --- |
+| Thomas Brady | Miami, Florida | `tbrady` | `goat` |
+| Dave Morgan | Naperville, Illinois | `dmorgan` | `ahead1` |
+| Matt Lowe | Cleveland, Ohio | `mlowe` | `ahead1` |
+| Dipen Shah | Edison, New Jersey | `dshah` | `ahead1` |
+
 ## Deploy On Three VMs
 
 This app is designed for three VMs:
@@ -309,17 +332,19 @@ For more concurrency during a demo:
 BACKEND_URL=http://BACKEND_PRIVATE_IP:8082 RATE=20 DURATION_SECONDS=600 CONCURRENT=true ./scripts/drive-traffic.sh
 ```
 
-## Admin Page
+## Controls Page
 
-Open http://FRONTEND_VM_HOST:8081/admin.
+Open the controls with the settings gear in the top-right navigation.
 
-The Admin page can:
+The controls page can:
 
-- Drive browser-generated load with a request-groups-per-second slider.
+- Drive browser-generated load with a request-groups-per-second slider. It defaults to 3 requests per second and persists the last selected value in the browser.
 - Enable 404 errors from the backend.
 - Enable slow SQL simulation on deposit and transfer calls.
 - Enable slow credit simulation before backend-to-credit calls.
 - Enable the built-in backend CPU burn problem.
+
+The UI load driver creates debit and credit activity across the seeded demo users. Debit examples include dinner, car payment, mortgage, groceries, gas, lunch, pet store, utilities, and other expenses with fake merchant names.
 
 The first built-in problem pattern is `Backend CPU Burn`. It intentionally burns CPU for a configurable number of milliseconds on account and credit proxy requests. Add future problem patterns behind new `AdminConfig` keys in the backend.
 

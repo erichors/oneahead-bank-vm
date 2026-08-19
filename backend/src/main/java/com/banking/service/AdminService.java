@@ -2,15 +2,20 @@ package com.banking.service;
 
 import com.banking.model.Account;
 import com.banking.model.AdminConfig;
+import com.banking.model.Transaction;
 import com.banking.model.User;
 import com.banking.repository.AccountRepository;
 import com.banking.repository.AdminConfigRepository;
+import com.banking.repository.TransactionRepository;
 import com.banking.repository.UserRepository;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +30,16 @@ public class AdminService {
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @Autowired
+    private TransactionRepository transactionRepository;
+
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void seedDemoData() {
+        createDefaultUsers();
+        userRepository.findAll().forEach(this::seedTransactionsForUser);
+    }
 
     public List<AdminConfig> getAllConfigs() {
         return adminConfigRepository.findAll();
@@ -115,6 +130,19 @@ public class AdminService {
     }
 
     @Transactional
+    public User createUser(String username, String password, String firstName, String lastName, String address, String city, String state, BigDecimal initialBalance) {
+        String accountNumber = generateAccountNumber(username);
+        User user = new User(username, password, firstName, lastName, address, city, state, accountNumber);
+        user = userRepository.save(user);
+
+        Account account = new Account(accountNumber);
+        account.setBalance(initialBalance);
+        accountRepository.save(account);
+
+        return user;
+    }
+
+    @Transactional
     public void deleteUser(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isPresent()) {
@@ -126,16 +154,47 @@ public class AdminService {
 
     @Transactional
     public void createDefaultUsers() {
-        createUserIfNotExists("conner.oc", "ConnerC", "Conner", "OC");
-        createUserIfNotExists("jack.nible", "JackN", "Jack", "Nible");
-        createUserIfNotExists("hunter.done", "HunterD", "Hunter", "Done");
-        createUserIfNotExists("henry.esi", "HenryE", "Henry", "Esi");
+        createUserIfNotExists("dmorgan", "ahead1", "Dave", "Morgan", "2148 Aurora Avenue", "Naperville", "Illinois", BigDecimal.valueOf(18420.63));
+        createUserIfNotExists("tbrady", "goat", "Thomas", "Brady", "82 Biscayne Terrace", "Miami", "Florida", BigDecimal.valueOf(128704.12));
+        createUserIfNotExists("mlowe", "ahead1", "Matt", "Lowe", "4406 Clifton Boulevard", "Cleveland", "Ohio", BigDecimal.valueOf(9204.44));
+        createUserIfNotExists("dshah", "ahead1", "Dipen", "Shah", "17 Oak Tree Road", "Edison", "New Jersey", BigDecimal.valueOf(35672.88));
     }
 
     private void createUserIfNotExists(String username, String password, String firstName, String lastName) {
         if (userRepository.findByUsername(username).isEmpty()) {
             createUser(username, password, firstName, lastName);
         }
+    }
+
+    private void createUserIfNotExists(String username, String password, String firstName, String lastName, String address, String city, String state, BigDecimal initialBalance) {
+        Optional<User> existing = userRepository.findByUsername(username);
+        if (existing.isEmpty()) {
+            createUser(username, password, firstName, lastName, address, city, state, initialBalance);
+        } else {
+            User user = existing.get();
+            user.setPassword(password);
+            user.setFirstName(firstName);
+            user.setLastName(lastName);
+            user.setAddress(address);
+            user.setCity(city);
+            user.setState(state);
+            userRepository.save(user);
+        }
+    }
+
+    private void seedTransactionsForUser(User user) {
+        String accountNumber = user.getAccountNumber();
+        if (transactionRepository.existsByFromAccountOrToAccount(accountNumber, accountNumber)) {
+            return;
+        }
+
+        List<Transaction> transactions = new ArrayList<>();
+        transactions.add(new Transaction(null, accountNumber, BigDecimal.valueOf(4825.00), Transaction.TransactionType.DEPOSIT, "Direct deposit"));
+        transactions.add(new Transaction(accountNumber, "883421", BigDecimal.valueOf(124.42), Transaction.TransactionType.TRANSFER, "Blue Harbor Dinner"));
+        transactions.add(new Transaction(accountNumber, "772910", BigDecimal.valueOf(86.19), Transaction.TransactionType.TRANSFER, "Northline Groceries"));
+        transactions.add(new Transaction(null, accountNumber, BigDecimal.valueOf(72.35), Transaction.TransactionType.DEPOSIT, "Statement credit"));
+        transactions.add(new Transaction(accountNumber, "551208", BigDecimal.valueOf(240.00), Transaction.TransactionType.TRANSFER, "Metro Utilities"));
+        transactionRepository.saveAll(transactions);
     }
 
     private boolean getBoolean(String key, boolean defaultValue) {
