@@ -10,6 +10,7 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:oneahead}
     password: ${SPRING_DATASOURCE_PASSWORD:oneahead}
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: false

@@ -60,6 +60,16 @@ configure_password_auth() {
   fi
 
   sudo cp "${hba_file}" "${hba_file}.bak.$(date +%Y%m%d%H%M%S)"
+  local tmp_file
+  tmp_file="$(mktemp)"
+  {
+    echo "host ${DB_NAME} ${DB_USER} 127.0.0.1/32 scram-sha-256"
+    echo "host ${DB_NAME} ${DB_USER} ::1/128 scram-sha-256"
+    sudo grep -Ev "^host[[:space:]]+${DB_NAME}[[:space:]]+${DB_USER}[[:space:]]+(127\\.0\\.0\\.1/32|::1/128)[[:space:]]+" "${hba_file}"
+  } > "${tmp_file}"
+  sudo cp "${tmp_file}" "${hba_file}"
+  rm -f "${tmp_file}"
+
   sudo sed -i -E \
     -e 's/^(host[[:space:]]+all[[:space:]]+all[[:space:]]+127\.0\.0\.1\/32[[:space:]]+).*/\1scram-sha-256/' \
     -e 's/^(host[[:space:]]+all[[:space:]]+all[[:space:]]+::1\/128[[:space:]]+).*/\1scram-sha-256/' \
