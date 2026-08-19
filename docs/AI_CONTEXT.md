@@ -82,7 +82,7 @@ The visible navigation uses a settings gear for the operational controls instead
 - Framework: Java 17, Spring Boot 3.2
 - Port: `8082`
 - Database: PostgreSQL
-- Default database URL: `jdbc:postgresql://localhost:5432/oneahead`
+- Default database URL: `jdbc:postgresql://127.0.0.1:5432/oneahead`
 - Important env var: `CREDIT_SERVICE_URL`
 
 Primary API groups:
@@ -112,7 +112,7 @@ VM service discovery is environment-variable based:
 ```bash
 CREDIT_SERVICE_URL=http://CREDIT_VM_HOST:8084/api/credit/check
 REACT_APP_API_URL=http://BACKEND_VM_HOST:8082
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
+SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/oneahead
 SPRING_DATASOURCE_USERNAME=oneahead
 SPRING_DATASOURCE_PASSWORD=oneahead
 DT_TAGS="app_name=ABNK tier=backend"

@@ -112,7 +112,7 @@ On the backend VM, run the setup script. It installs PostgreSQL when needed, ini
 The backend defaults to this local database configuration:
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
+SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/oneahead
 SPRING_DATASOURCE_USERNAME=oneahead
 SPRING_DATASOURCE_PASSWORD=oneahead
 SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
@@ -236,7 +236,7 @@ WorkingDirectory=/home/ec2-user/oneahead-bank-vm
 Environment=PORT=8082
 Environment=CREDIT_SERVICE_URL=http://CREDIT_VM_HOST:8084/api/credit/check
 Environment="DT_TAGS=app_name=ABNK tier=backend"
-Environment=SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/oneahead
+Environment=SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/oneahead
 Environment=SPRING_DATASOURCE_USERNAME=oneahead
 Environment=SPRING_DATASOURCE_PASSWORD=oneahead
 Environment=SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver

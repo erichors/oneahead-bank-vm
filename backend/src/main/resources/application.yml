@@ -5,7 +5,7 @@ spring:
   application:
     name: banking-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/oneahead}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/oneahead}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
     username: ${SPRING_DATASOURCE_USERNAME:oneahead}
     password: ${SPRING_DATASOURCE_PASSWORD:oneahead}

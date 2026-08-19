@@ -4,6 +4,7 @@ set -euo pipefail
 DB_NAME="${DB_NAME:-oneahead}"
 DB_USER="${DB_USER:-oneahead}"
 DB_PASSWORD="${DB_PASSWORD:-oneahead}"
+POSTGRES_UNIT=""
 
 install_postgres() {
   if command -v psql >/dev/null 2>&1; then
@@ -33,6 +34,7 @@ init_postgres() {
 
 start_postgres() {
   if systemctl list-unit-files postgresql.service --no-legend 2>/dev/null | grep -q '^postgresql.service'; then
+    POSTGRES_UNIT="postgresql"
     sudo systemctl enable --now postgresql
     return
   fi
@@ -40,12 +42,38 @@ start_postgres() {
   local unit
   unit="$(systemctl list-unit-files 'postgresql*.service' --no-legend 2>/dev/null | awk 'NR == 1 {print $1}')"
   if [ -n "${unit}" ]; then
+    POSTGRES_UNIT="${unit}"
     sudo systemctl enable --now "${unit}"
     return
   fi
 
   echo "Could not find a PostgreSQL systemd unit." >&2
   exit 1
+}
+
+configure_password_auth() {
+  local hba_file
+  hba_file="$(sudo -u postgres psql -Atc 'show hba_file;' 2>/dev/null || true)"
+  if [ -z "${hba_file}" ] || [ ! -f "${hba_file}" ]; then
+    echo "Could not find pg_hba.conf. Skipping auth file update." >&2
+    return
+  fi
+
+  sudo cp "${hba_file}" "${hba_file}.bak.$(date +%Y%m%d%H%M%S)"
+  sudo sed -i -E \
+    -e 's/^(host[[:space:]]+all[[:space:]]+all[[:space:]]+127\.0\.0\.1\/32[[:space:]]+).*/\1scram-sha-256/' \
+    -e 's/^(host[[:space:]]+all[[:space:]]+all[[:space:]]+::1\/128[[:space:]]+).*/\1scram-sha-256/' \
+    "${hba_file}"
+
+  if ! sudo grep -Eq '^host[[:space:]]+all[[:space:]]+all[[:space:]]+127\.0\.0\.1/32[[:space:]]+' "${hba_file}"; then
+    echo "host all all 127.0.0.1/32 scram-sha-256" | sudo tee -a "${hba_file}" >/dev/null
+  fi
+
+  if ! sudo grep -Eq '^host[[:space:]]+all[[:space:]]+all[[:space:]]+::1/128[[:space:]]+' "${hba_file}"; then
+    echo "host all all ::1/128 scram-sha-256" | sudo tee -a "${hba_file}" >/dev/null
+  fi
+
+  sudo systemctl reload "${POSTGRES_UNIT}" 2>/dev/null || sudo systemctl restart "${POSTGRES_UNIT}"
 }
 
 configure_database() {
@@ -68,12 +96,13 @@ SQL
 install_postgres
 init_postgres
 start_postgres
+configure_password_auth
 configure_database
 
 cat <<EOF
 Local PostgreSQL is ready.
 
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/${DB_NAME}
+SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/${DB_NAME}
 SPRING_DATASOURCE_USERNAME=${DB_USER}
 SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
 SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
