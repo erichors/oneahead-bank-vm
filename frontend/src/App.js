@@ -132,7 +132,17 @@ function Shell({ session, setSession }) {
   };
 
   const runLoadBatch = async (count) => {
-    const calls = Array.from({ length: count }, () => api.post('/api/demo/transactions/random'));
+    const calls = Array.from({ length: count }, (_, index) => {
+      if (index % 2 === 0) {
+        return api.post('/api/demo/transactions/random');
+      }
+
+      const ssnPrefix = 100 + Math.floor(Math.random() * 900);
+      return api.post('/api/credit/check', {
+        ssn: `${ssnPrefix}-45-6789`,
+        metadata: `admin-load-${Date.now()}-${index}`,
+      });
+    });
     const results = await Promise.allSettled(calls);
     const ok = results.filter((result) => result.status === 'fulfilled').length;
     const failed = results.length - ok;
