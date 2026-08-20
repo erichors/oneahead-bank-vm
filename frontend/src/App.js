@@ -383,8 +383,14 @@ function CreditCheck() {
         ssn,
         metadata: applicationMetadata,
       });
+      const score = Number(response.data.creditScore || 0);
+      const approved = score >= 650;
       setResult(response.data);
-      setApplicationMessage(`Application submitted. Demo decision: ${response.data.status || 'reviewed'}`);
+      setApplicationMessage(
+        approved
+          ? `Application approved. Credit score ${score} meets the 650 minimum.`
+          : `Application declined. Credit score ${score} is below the 650 minimum.`
+      );
       setError('');
     } catch (err) {
       setApplicationMessage('');
@@ -413,7 +419,11 @@ function CreditCheck() {
             <label>Requested Limit<input type="number" min="500" step="500" value={application.requestedLimit} onChange={(event) => updateApplication('requestedLimit', event.target.value)} /></label>
             <button className="btn" type="submit">Submit Application</button>
           </form>
-          {applicationMessage && <div className="success">{applicationMessage}</div>}
+          {applicationMessage && (
+            <div className={applicationMessage.includes('declined') ? 'error' : 'success'}>
+              {applicationMessage}
+            </div>
+          )}
         </article>
       )}
       <article className="panel action-panel">
