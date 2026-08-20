@@ -356,7 +356,8 @@ label {
   font-weight: 800;
 }
 
-input {
+input,
+select {
   min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -367,7 +368,8 @@ input {
   outline: none;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--green-dark);
   box-shadow: 0 0 0 4px rgba(51, 159, 211, 0.18);
 }
@@ -393,6 +395,13 @@ input[type="range"] {
 
 .btn:hover {
   background: #2d62cc;
+}
+
+.btn.apply-link {
+  display: inline-grid;
+  place-items: center;
+  text-decoration: none;
+  width: fit-content;
 }
 
 .btn.secondary {
@@ -426,6 +435,14 @@ input[type="range"] {
 
 .action-panel {
   max-width: 760px;
+}
+
+.application-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.application-form .btn {
+  grid-column: 1 / -1;
 }
 
 .credit-layout,
@@ -607,6 +624,10 @@ input[type="range"] {
   .dashboard-layout,
   .credit-layout,
   .controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .application-form {
     grid-template-columns: 1fr;
   }
 

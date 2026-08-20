@@ -217,7 +217,7 @@ function Dashboard({ session, setSession }) {
       </div>
       <aside className="right-stack">
         <MarketPanel />
-        <ApplyCard onOpen={() => setShowProfile(true)} />
+        <ApplyCard />
       </aside>
       {showProfile && <AccountModal session={session} onClose={() => setShowProfile(false)} />}
     </section>
@@ -266,13 +266,13 @@ function MarketPanel() {
   );
 }
 
-function ApplyCard({ onOpen }) {
+function ApplyCard() {
   return (
     <article className="panel apply-card">
       <p className="eyebrow">Credit Card</p>
       <h2>Apply for a OneAhead card</h2>
-      <p>Review account details before starting a demo application.</p>
-      <button className="btn" onClick={onOpen}>Apply</button>
+      <p>Start a demo application and generate a credit-service review.</p>
+      <Link className="btn apply-link" to="/credit?apply=1">Apply</Link>
     </article>
   );
 }
@@ -335,10 +335,21 @@ function ActionPanel({ title, submit, message, children }) {
 }
 
 function CreditCheck() {
+  const location = useLocation();
+  const showApplication = new URLSearchParams(location.search).get('apply') === '1';
   const [ssn, setSsn] = useState('123-45-6789');
   const [metadata, setMetadata] = useState('credit review');
+  const [application, setApplication] = useState({
+    firstName: 'Thomas',
+    lastName: 'Brady',
+    income: '275000',
+    housing: 'Mortgage',
+    employment: 'Athlete',
+    requestedLimit: '25000',
+  });
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [applicationMessage, setApplicationMessage] = useState('');
 
   const submit = async (event) => {
     event.preventDefault();
@@ -354,8 +365,57 @@ function CreditCheck() {
 
   const history = result?.history || [];
 
+  const updateApplication = (key, value) => {
+    setApplication((current) => ({ ...current, [key]: value }));
+  };
+
+  const apply = async (event) => {
+    event.preventDefault();
+    try {
+      const applicationMetadata = [
+        `application for ${application.firstName} ${application.lastName}`,
+        `income ${application.income}`,
+        `housing ${application.housing}`,
+        `employment ${application.employment}`,
+        `limit ${application.requestedLimit}`,
+      ].join(' | ');
+      const response = await api.post('/api/credit/check', {
+        ssn,
+        metadata: applicationMetadata,
+      });
+      setResult(response.data);
+      setApplicationMessage(`Application submitted. Demo decision: ${response.data.status || 'reviewed'}`);
+      setError('');
+    } catch (err) {
+      setApplicationMessage('');
+      setError('Application failed: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   return (
     <section className="credit-layout">
+      {showApplication && (
+        <article className="panel action-panel wide-panel">
+          <h2>Credit Card Application</h2>
+          <form className="application-form" onSubmit={apply}>
+            <label>First Name<input value={application.firstName} onChange={(event) => updateApplication('firstName', event.target.value)} /></label>
+            <label>Last Name<input value={application.lastName} onChange={(event) => updateApplication('lastName', event.target.value)} /></label>
+            <label>Annual Income<input type="number" min="0" step="1000" value={application.income} onChange={(event) => updateApplication('income', event.target.value)} /></label>
+            <label>Housing
+              <select value={application.housing} onChange={(event) => updateApplication('housing', event.target.value)}>
+                <option>Mortgage</option>
+                <option>Rent</option>
+                <option>Own</option>
+                <option>Family</option>
+              </select>
+            </label>
+            <label>Employment<input value={application.employment} onChange={(event) => updateApplication('employment', event.target.value)} /></label>
+            <label>Requested Limit<input type="number" min="500" step="500" value={application.requestedLimit} onChange={(event) => updateApplication('requestedLimit', event.target.value)} /></label>
+            <button className="btn" type="submit">Submit Application</button>
+          </form>
+          {applicationMessage && <div className="success">{applicationMessage}</div>}
+        </article>
+      )}
       <article className="panel action-panel">
         <h2>Credit Check</h2>
         <form onSubmit={submit}>
